@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: Accommodation-Marketplace
+  config:
+    import: optional:file:.env[.properties]
+  datasource:
+    url: ${DATASOURCE_URL}
+    username: ${MYSQL_USER}
+    password: ${MYSQL_PASSWORD}
+  jpa:
+    show-sql: true
+    open-in-view: false
+    hibernate:
+      ddl_auto: update
+      properties:
+        hibernate:
+          format-sql: false
