@@ -1,8 +1,9 @@
 spring:
   application:
-    name: Accommodation-Marketplace
+    name: accommodation-marketplace
   config:
     import: optional:file:.env[.properties]
+
   datasource:
     url: ${DATASOURCE_URL}
     username: ${MYSQL_USER}
@@ -15,3 +16,8 @@ spring:
       properties:
         hibernate:
           format-sql: false
+
+# App Configuration
+app:
+  jwt:
+    secret: ${JWT_SECRET}
