@@ -24,6 +24,9 @@ public class CurrentUser {
     }
 
     public static void setAuthentication(Authentication authentication) {
+        if(authentication == null) {
+            return;
+        }
         SecurityContextHolder.getContext().setAuthentication(authentication);
     }
 }

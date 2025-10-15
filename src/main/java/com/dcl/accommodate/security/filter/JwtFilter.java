@@ -34,31 +34,39 @@ public class JwtFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         log.info("Authenticating request via JwtFilter for type '{}'", jwtType);
 
-        // 1. Skip if user already authenticated
-        if(CurrentUser.getAuthentication().isPresent()) {
-            log.info("Request is already Authenticated, skipping authentication");
-            filterChain.doFilter(request, response);
+        String publicURL = "/api/v1/public";
+
+        if(! request.getRequestURI().contains(publicURL)) {
+            if(CurrentUser.getAuthentication().isEmpty()) {
+                String token = request.getHeader(HttpHeaders.AUTHORIZATION);
+                token = token != null
+                        ? token.substring(7)
+                        : "";
+
+                if(! token.isBlank()) {
+                   var jws = jwtService.getClaims(token);
+
+                   if(isTypeValid(jws)) {
+                       Claims claims = jws.getBody();
+
+                       if(claims != null) {
+                           String userId = claims.getSubject();
+                           if(userId != null) {
+                               var authorities = resolveGrantedAuthorities(claims); // never returns null
+                               CurrentUser.setAuthentication(new UsernamePasswordAuthenticationToken(userId, null, authorities));
+                               log.info("Authentication Successful for user: '{}'", userId);
+
+                           } else log.warn("Authentication Failed. No Subject in JWT.");
+
+                       } else log.warn("Authentication Failed. Couldn't extract JWT claims.");
+
+                   } else log.warn("Authentication Failed. JWT type mismatch.");
+
+                } else log.warn("Authentication Failed. JWT is Null or Blank.");
+
+            } else log.info("Skipping Authentication in JWTFilter for '{}', User Already Authenticated", jwtType);
         }
 
-        // 2. Get Token from 'Authorization' header
-        var token = safeExtractToken(request, response, filterChain);
-        var jws = jwtService.getClaims(token);
-
-        // 3. Check if token type matches, required to ensure that only the right token gets authenticated.
-        matchType(request, response, filterChain, jws);
-
-        // 4. Extract claims such as userId and authorities
-        Claims claims = jws.getBody();
-        String userId = claims.getSubject();
-        if (userId == null) logAndForward("invalid subject in JWT, Invalid JWT", request, response, filterChain);
-        var authorities = resolveGrantedAuthorities(claims);
-
-        // 5. Update SecurityContext with new Authentication.
-        var unPwdToken = new UsernamePasswordAuthenticationToken(userId, null, authorities);
-        CurrentUser.setAuthentication(unPwdToken);
-        log.info("User successfully authenticated.");
-
-        // 6. Forward request to the next filter in the chain.
         filterChain.doFilter(request, response);
     }
 
@@ -76,29 +84,8 @@ public class JwtFilter extends OncePerRequestFilter {
         return authorities;
     }
 
-    private void matchType(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain, Jws<Claims> jws) throws IOException, ServletException {
-        try {
+    private boolean isTypeValid(Jws<Claims> jws) throws IOException, ServletException {
             String type = (String) jws.getHeader().get("type");
-            if(!type.equalsIgnoreCase(jwtType.name())) throw new JwtException("Invalid Jwt Type.");
-        } catch (ClassCastException | NullPointerException | JwtException e) {
-            logAndForward("Invalid Jwt Type", request, response, filterChain);
-        }
-    }
-
-    private String safeExtractToken(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws IOException, ServletException {
-        try {
-            String token = request.getHeader(HttpHeaders.AUTHORIZATION);
-            token = token.substring(7);
-            if(token.isBlank()) throw new JwtException("Invalid JWT token");
-            else return token;
-        } catch (NullPointerException | JwtException e) {
-            logAndForward("Token not found in the request.", request, response, filterChain);
-        }
-        return null; // Unreached - either returns valid token or forwards the request
-    }
-
-    private void logAndForward(String message, HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws IOException, ServletException {
-        log.warn(message);
-        filterChain.doFilter(request, response);
+            return jwtType.name().equals(type);
     }
 }
