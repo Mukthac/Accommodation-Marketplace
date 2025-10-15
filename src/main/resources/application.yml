@@ -19,6 +19,7 @@ spring:
 
 # App Configuration
 app:
+  base-url: ${BASE_URI}
   jwt:
     secret: ${JWT_SECRET}
     access-ttl: ${ACCESS_TOKEN_TTL:1h}

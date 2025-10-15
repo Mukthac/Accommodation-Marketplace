@@ -13,6 +13,7 @@ import java.time.Duration;
 @ConfigurationProperties(prefix = "app")
 public class AppEnv {
 
+    private String baseURI;
     private Jwt jwt;
 
     @Getter

@@ -29,6 +29,7 @@ public class JwtFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final JwtType jwtType;
+    private final String PublicURL;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
@@ -36,7 +37,7 @@ public class JwtFilter extends OncePerRequestFilter {
 
         String publicURL = "/api/v1/public";
 
-        if(! request.getRequestURI().contains(publicURL)) {
+        if(! request.getRequestURI().contains(PublicURL)) {
             if(CurrentUser.getAuthentication().isEmpty()) {
                 String token = request.getHeader(HttpHeaders.AUTHORIZATION);
                 token = token != null

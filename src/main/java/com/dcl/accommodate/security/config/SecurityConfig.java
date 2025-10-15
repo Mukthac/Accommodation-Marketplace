@@ -3,6 +3,7 @@ package com.dcl.accommodate.security.config;
 import com.dcl.accommodate.security.filter.JwtFilter;
 import com.dcl.accommodate.security.jwt.JwtService;
 import com.dcl.accommodate.security.jwt.JwtType;
+import com.dcl.accommodate.util.UriBuilder;
 import lombok.AllArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,6 +26,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtService jwtService;
+    private final UriBuilder uriBuilder;
 
     @Bean
     PasswordEncoder passwordEncoder() {
@@ -34,7 +36,7 @@ public class SecurityConfig {
     @Bean
     @Order(2)
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http.securityMatcher("/api/v1/**");
+        http.securityMatcher(uriBuilder.buildPublicURI("/api/v1/**").toString());
         configureFilterChainWithDefaults(http, JwtType.ACCESS);
         return http.build();
     }
@@ -42,25 +44,25 @@ public class SecurityConfig {
     @Bean
     @Order(1)
     SecurityFilterChain refreshFilterChain(HttpSecurity http) throws Exception {
-        http.securityMatcher("/api/v1/refresh/**");
+        http.securityMatcher(uriBuilder.buildURI("/api/v1/refresh/**").toString());
         configureFilterChainWithDefaults(http, JwtType.REFRESH);
         return http.build();
     }
 
     private void configureFilterChainWithDefaults(HttpSecurity http, JwtType jwtType) throws Exception {
-        http.csrf(AbstractHttpConfigurer::disable);
-
-        http.authorizeHttpRequests(authorize ->
-                authorize.requestMatchers("/api/v1/public/**")
+        http
+                .csrf(AbstractHttpConfigurer::disable)
+                .authorizeHttpRequests(authorize -> authorize
+                        .requestMatchers(
+                                uriBuilder.buildPublicURI("/api/v1/public/**").toString())
                         .permitAll()
-                        .anyRequest().authenticated());
+                        .anyRequest()
+                        .authenticated());
 
         http.addFilterBefore(
-                JwtFilter.builder()
-                        .jwtService(jwtService)
-                        .jwtType(jwtType)
-                        .build(),
-                UsernamePasswordAuthenticationFilter.class);
+                new JwtFilter(jwtService,jwtType,uriBuilder.buildPublicURI("").toString())
+                ,UsernamePasswordAuthenticationFilter.class);
+
 
         http.sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
