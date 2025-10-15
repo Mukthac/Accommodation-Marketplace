@@ -32,25 +32,33 @@ public class JwtFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+        log.info("Authenticating request via JwtFilter for type '{}'", jwtType);
 
+        // 1. Skip if user already authenticated
         if(CurrentUser.getAuthentication().isPresent()) {
-            log.info("Request is already Authenticated, skipping authentication in JwtFilter for type '{}'", jwtType.name());
+            log.info("Request is already Authenticated, skipping authentication");
             filterChain.doFilter(request, response);
         }
 
+        // 2. Get Token from 'Authorization' header
         var token = safeExtractToken(request, response, filterChain);
         var jws = jwtService.getClaims(token);
 
+        // 3. Check if token type matches, required to ensure that only the right token gets authenticated.
         matchType(request, response, filterChain, jws);
 
+        // 4. Extract claims such as userId and authorities
         Claims claims = jws.getBody();
         String userId = claims.getSubject();
         if (userId == null) logAndForward("invalid subject in JWT, Invalid JWT", request, response, filterChain);
         var authorities = resolveGrantedAuthorities(claims);
 
+        // 5. Update SecurityContext with new Authentication.
         var unPwdToken = new UsernamePasswordAuthenticationToken(userId, null, authorities);
         CurrentUser.setAuthentication(unPwdToken);
+        log.info("User successfully authenticated.");
 
+        // 6. Forward request to the next filter in the chain.
         filterChain.doFilter(request, response);
     }
 

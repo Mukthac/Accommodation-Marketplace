@@ -43,5 +43,10 @@ public class UserController {
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<AuthResponse>> refreshLogin() {
         var response = userService.refreshLogin();
+        return ResponseEntity.ok(new ApiResponse<>(
+                true,
+                "User Successfully Logged In",
+                response
+        ));
     }
 }
