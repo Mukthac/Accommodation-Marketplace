@@ -16,6 +16,9 @@ import java.util.UUID;
 @Setter
 @Table(name = "users")
 @EntityListeners(AuditingEntityListener.class)
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
